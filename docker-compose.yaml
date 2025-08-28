@@ -11,6 +11,9 @@ services:
     depends_on:
       - db
       - redis
+    networks:
+      static-network:
+        ipv4_address: 172.20.0.6
 
   db:
     image: postgres:15
@@ -33,3 +36,9 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  static-network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
