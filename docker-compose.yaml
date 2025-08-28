@@ -13,7 +13,7 @@ services:
       - redis
     networks:
       static-network:
-        ipv4_address: 172.20.0.6
+        ipv4_address: 10.11.0.6
 
   db:
     image: postgres:15
@@ -23,15 +23,18 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+    networks:
+      static-network:
+        ipv4_address: 10.11.0.7
 
   redis:
     image: redis:latest
     container_name: redis
     expose:
-      - 6379
+      - "6379"
     networks:
       static-network:
-        ipv4_address: 172.20.0.8
+        ipv4_address: 10.11.0.8
     restart: unless-stopped
 
 volumes:
@@ -39,6 +42,7 @@ volumes:
 
 networks:
   static-network:
+    driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/24
+        - subnet: 10.11.0.0/24
