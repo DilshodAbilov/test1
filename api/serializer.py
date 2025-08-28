@@ -15,7 +15,7 @@ class LevelSerializer(serializers.ModelSerializer):
 
 class QuestionsSerializer(serializers.ModelSerializer):
     answers = AnswersSerializer(many=True)
-
+    level = LevelSerializer(many = True)
     class Meta:
         model = Questions
         fields = '__all__'
@@ -65,9 +65,8 @@ class GroupSerializer(serializers.ModelSerializer):
             Questions.objects.create(group=group, **question)
         return group
 
-class ResultSerializer(serializers.Serializer):
-    group_id = serializers.IntegerField()
-    group_name = serializers.CharField()
-    rank = serializers.IntegerField(allow_null=True)
-    score = serializers.IntegerField()
+class ResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Result
+        fields = '__all__'
 

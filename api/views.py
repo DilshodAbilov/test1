@@ -95,22 +95,18 @@ class EditQuestion(APIView):
 class Result(APIView):
     serializer_class = ResultSerializer
     @extend_schema(responses=ResultSerializer(many=True))
-
     def get(self, request):
         user = request.user
-        results = []
-        groups = GroupUsers.objects.filter(user=user).select_related("group")
-        for gu in groups:
-            group = gu.group
-            score = (
-                Result.objects.filter(group = group, user=user).score('score')
+        result = Result.objects.filter(user = user)
+        serializers = ResultSerializer(result, many = True)
+        return Response(serializers.data, status = status.HTTP_200_OK)
+class DeleteUserAnswer(APIView):
+    def delete(self, group_id):
+        group = get_object_or_404(Group, code=group_id)
+        if group.admin != request.user:
+            return Response(
+                {"detail": "Faqat xona egasi savol qo‘shishi mumkin."},
+                status=status.HTTP_403_FORBIDDEN
             )
-            rank_obj = RankGroup.objects.filter(group=group, user=user).first()
-            rank = rank_obj.rank if rank_obj else None
-            results.append({
-                "group_id": group.id,
-                "group_name": group.name,
-                "rank": rank,
-                "score": score,
-            })
-        return Response(results)
+        question = Questions.objects.filter(group__code=group_id)
+        question.delete()

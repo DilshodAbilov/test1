@@ -1,15 +1,10 @@
 from django.db import models
 from accounts.models import CustomUser as User
-class Category(models.Model):
-    name = models.CharField(max_length=20)
-    def __str__(self):
-        return self.name
+
 class Group(models.Model):
     name = models.CharField(max_length=20)
     description = models.TextField(null=True, blank=True)
-    category = models.ForeignKey('Category', on_delete=models.CASCADE)
     admin = models.ForeignKey(User, on_delete=models.CASCADE)
-    pin = models.IntegerField()
     code = models.CharField()
     time = models.IntegerField()
     start_time = models.DateTimeField(null=True, blank=True)
