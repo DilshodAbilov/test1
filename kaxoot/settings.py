@@ -20,6 +20,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -51,6 +52,24 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Test ishlash uchun platforma',
     'VERSION': '1.0.0',
 }
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = default_headers + (
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "cache-control",
+    "content-disposition",
+    "Access-Control-Expose-Headers",
+)
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_WHITELIST = config("CORS_ORIGIN_WHITELIST", "*")
+
+CORS_ORIGIN_ALLOW_ALL = config('CORS_ORIGIN_ALLOW_ALL', False)
 from datetime import timedelta
 
 SIMPLE_JWT = {
@@ -75,6 +94,7 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
