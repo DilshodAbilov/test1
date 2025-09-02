@@ -67,7 +67,11 @@ CORS_ALLOW_HEADERS = default_headers + (
 )
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = config("CORS_ORIGIN_WHITELIST", "*")
+CORS_ORIGIN_WHITELIST = config(
+    "CORS_ORIGIN_WHITELIST",
+    default="",
+    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()]
+)
 
 CORS_ORIGIN_ALLOW_ALL = config('CORS_ORIGIN_ALLOW_ALL', False)
 from datetime import timedelta
