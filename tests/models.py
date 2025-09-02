@@ -1,6 +1,9 @@
 from django.db import models
 from accounts.models import CustomUser as User
-
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+    def __str__(self):
+        return self.name
 class Group(models.Model):
     name = models.CharField(max_length=20)
     description = models.TextField(null=True, blank=True)
@@ -20,10 +23,14 @@ class Level(models.Model):
 class Questions(models.Model):
     question = models.CharField(max_length=100)
     file = models.FileField(upload_to='questions', blank=True, null=True)
-    group = models.ForeignKey('Group', on_delete=models.CASCADE)
+    group = models.ManyToManyField('Group',  related_name="questions", blank=True)
     level = models.ForeignKey('Level', on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    category = models.ForeignKey('Category', on_delete=models.CASCADE)
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
     def __str__(self):
-        return self.group.name
+        return self.id
 
 class Answer(models.Model):
     question = models.ForeignKey('Questions', on_delete=models.CASCADE, related_name='answers')
