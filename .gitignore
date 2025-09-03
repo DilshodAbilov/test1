@@ -4,8 +4,6 @@ __pycache__/
 *$py.class
 
 # Environment
-env/
-.env
 venv/
 .venv/
 ENV/
@@ -38,3 +36,7 @@ media/
 # Coverage reports
 htmlcov/
 .coverage
+
+
+
+.env.env

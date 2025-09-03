@@ -44,28 +44,7 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Test ishlash uchun platforma',
     'VERSION': '1.0.0',
 }
-from corsheaders.defaults import default_headers
 
-CORS_ALLOW_HEADERS = default_headers + (
-    "accept",
-    "authorization",
-    "content-type",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-    "cache-control",
-    "content-disposition",
-    "Access-Control-Expose-Headers",
-)
-
-CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = config(
-    "CORS_ORIGIN_WHITELIST",
-    default="",
-    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()]
-)
-
-CORS_ORIGIN_ALLOW_ALL = config('CORS_ORIGIN_ALLOW_ALL', False)
 from datetime import timedelta
 
 SIMPLE_JWT = {
@@ -102,6 +81,26 @@ MIDDLEWARE = [
 ]
 AUTH_USER_MODEL = 'accounts.CustomUser'
 ROOT_URLCONF = 'kaxoot.urls'
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://game.kvark.uz",
+]
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5174',
+    'http://localhost:5173',
+]
+
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = default_headers + (
+    'cache-control',
+    'content-disposition',
+    'Access-Control-Expose-Headers',
+)
+
+CORS_ALLOW_ALL_METHODS = True
+CORS_ALLOW_ALL_HEADERS = True
 
 TEMPLATES = [
     {
