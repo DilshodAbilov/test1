@@ -1,10 +1,8 @@
 from django.urls import path
-from .views import RegisterView, LoginView, AdminGoogleView,ProfileUpdateView, ChangePasswordView
+from .views import AdminRegisterView, AdminLoginView, GoogleAuthView
 
 urlpatterns = [
-    path("register/", RegisterView.as_view(), name="register"),
-    path("login/", LoginView.as_view(), name="login"),
-    path("admin/google/", AdminGoogleView.as_view(), name="admin-google"),
-    path("profile/update/", ProfileUpdateView.as_view(), name="profile-update"),
-    path("profile/change-password/", ChangePasswordView.as_view(), name="change-password"),
+    path("admin/register/", AdminRegisterView.as_view(), name="admin-register"),
+    path("admin/login/", AdminLoginView.as_view(), name="admin-login"),
+    path("google/auth/", GoogleAuthView.as_view(), name="google-auth"),
 ]

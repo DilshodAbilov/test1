@@ -1,23 +1,16 @@
+
 import os
 from pathlib import Path
 import dj_database_url
 from decouple import config
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-)4x1d-2q-e*yif6&#r5@iaw*w@9h%*(0b2^u=$!4z#$3h#x9(w'
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
 ALLOWED_HOSTS = ['*']
-
-# Application definition
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -52,24 +45,7 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Test ishlash uchun platforma',
     'VERSION': '1.0.0',
 }
-from corsheaders.defaults import default_headers
 
-CORS_ALLOW_HEADERS = default_headers + (
-    "accept",
-    "authorization",
-    "content-type",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-    "cache-control",
-    "content-disposition",
-    "Access-Control-Expose-Headers",
-)
-
-CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = config("CORS_ORIGIN_WHITELIST", "*")
-
-CORS_ORIGIN_ALLOW_ALL = config('CORS_ORIGIN_ALLOW_ALL', False)
 from datetime import timedelta
 
 SIMPLE_JWT = {
@@ -107,6 +83,26 @@ MIDDLEWARE = [
 AUTH_USER_MODEL = 'accounts.CustomUser'
 ROOT_URLCONF = 'kaxoot.urls'
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://game.kvark.uz",
+]
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5174',
+    'http://localhost:5173',
+]
+
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = default_headers + (
+    'cache-control',
+    'content-disposition',
+    'Access-Control-Expose-Headers',
+)
+
+CORS_ALLOW_ALL_METHODS = True
+CORS_ALLOW_ALL_HEADERS = True
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -133,8 +129,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
     'default': dj_database_url.parse(
@@ -144,11 +138,9 @@ DATABASES = {
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
+    'https://game.kvark.uz',
     "https://2437fd5802b5.ngrok-free.app"
 ]
-
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -165,9 +157,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -176,15 +165,9 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

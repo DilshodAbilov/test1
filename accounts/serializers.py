@@ -1,75 +1,119 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
-from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.tokens import RefreshToken
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
 User = get_user_model()
 
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True)
+
+# -------------------
+# Admin Register
+# -------------------
+class AdminRegisterSerializer(serializers.ModelSerializer):
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
-        fields = ("username", "first_name", "last_name", "password")
-
-    def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("Bunday foydalanuvchi mavjud")
-        return value
-
+        fields = ("username", "first_name", "last_name", "password", "access", "refresh")
+        extra_kwargs = {"password": {"write_only": True}}
 
     def create(self, validated_data):
-        validated_data["password"] = make_password(validated_data["password"])
-        return User.objects.create(**validated_data)
+        user = User.objects.create_user(**validated_data)
+        user.is_admin = True
+        user.is_staff = False   # API orqali hech qachon staff bo‘lmaydi
+        user.save()
 
-class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField(write_only=True)
-    access = serializers.CharField(read_only=True)
-    refresh = serializers.CharField(read_only=True)
-    class Meta:
-        ref_name = "CustomLogin"
-    def validate(self, data):
-        username = data.get("username")
-        password = data.get("password")
-        user = authenticate(username=username, password=password)
-        if user is None:
-            raise serializers.ValidationError("Invalid username or password")
         refresh = RefreshToken.for_user(user)
         return {
             "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "is_admin": user.is_admin,
+            "is_user": user.is_user,
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         }
 
-class AdminGoogleSerializer(serializers.ModelSerializer):
+
+# -------------------
+# Admin Login
+# -------------------
+class AdminLoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
     access = serializers.CharField(read_only=True)
     refresh = serializers.CharField(read_only=True)
 
-    class Meta:
-        model = User
-        fields = ("username", "first_name", "last_name", "access", "refresh")
-        ref_name = "CustomAdminGoogle"
-    def create(self, validated_data):
-        user = User.objects.create(**validated_data)
+    def validate(self, data):
+        user = authenticate(username=data.get("username"), password=data.get("password"))
+        if not user or not user.is_admin:
+            raise serializers.ValidationError("Admin topilmadi yoki parol noto‘g‘ri")
+
         refresh = RefreshToken.for_user(user)
-        user.access = str(refresh.access_token)
-        user.refresh = str(refresh)
-        return user
-
-class ProfileUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("username","first_name", "last_name")
-
-    def update(self, instance, validated_data):
-        instance.username = validated_data.get("username", instance.username)
-        instance.first_name = validated_data.get("first_name", instance.first_name)
-        instance.last_name = validated_data.get("last_name", instance.last_name)
-        instance.save()
-        return instance
+        return {
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "is_admin": user.is_admin,
+            "is_user": user.is_user,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }
 
 
-class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True)
+# -------------------
+# Google Auth (User & Admin)
+# -------------------
+class GoogleAuthSerializer(serializers.Serializer):
+    id_token = serializers.CharField(write_only=True)
+    is_admin = serializers.BooleanField(default=False, write_only=True)
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    first_name = serializers.CharField(read_only=True)
+    last_name = serializers.CharField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+
+    def validate(self, data):
+        token = data.get("id_token")
+        is_admin = data.get("is_admin", False)
+
+        try:
+            idinfo = id_token.verify_oauth2_token(token, requests.Request())
+
+            email = idinfo.get("email")
+            first_name = idinfo.get("given_name", "")
+            last_name = idinfo.get("family_name", "")
+            username = email.split("@")[0]
+
+            user, created = User.objects.get_or_create(
+                username=username,
+                defaults={"first_name": first_name, "last_name": last_name, "email": email},
+            )
+
+            if is_admin:
+                user.is_admin = True
+            else:
+                user.is_user = True
+
+            user.is_staff = False   # API orqali staff qo‘yilmaydi
+            user.save()
+
+            refresh = RefreshToken.for_user(user)
+            return {
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "is_admin": user.is_admin,
+                "is_user": user.is_user,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            }
+
+        except ValueError:
+            raise serializers.ValidationError("Google token noto‘g‘ri yoki eskirgan")
