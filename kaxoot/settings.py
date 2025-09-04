@@ -2,16 +2,14 @@ import os
 from pathlib import Path
 import dj_database_url
 from decouple import config
-from datetime import timedelta
-from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-test-key'   # faqat lokal uchun
+SECRET_KEY = 'django-insecure-)4x1d-2q-e*yif6&#r5@iaw*w@9h%*(0b2^u=$!4z#$3h#x9(w'
 
-DEBUG = True   # ✅ localda True bo‘lishi kerak
+DEBUG = False
 
-ALLOWED_HOSTS = ['*']   # yoki ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -35,29 +33,30 @@ INSTALLED_APPS = [
     'dj_rest_auth.registration',
     'drf_spectacular',
 ]
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
-
 SPECTACULAR_SETTINGS = {
     'TITLE': 'DRF Kursi',
     'DESCRIPTION': 'Test ishlash uchun platforma',
     'VERSION': '1.0.0',
 }
 
+from datetime import timedelta
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),   # ✅ local uchun qisqa qilib qo‘y
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=364),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=132),
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 SITE_ID = 1
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
+
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 ACCOUNT_LOGIN_METHODS = {"username"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
@@ -80,27 +79,28 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
-
 AUTH_USER_MODEL = 'accounts.CustomUser'
-
 ROOT_URLCONF = 'kaxoot.urls'
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
+    "https://game.kvark.uz",
 ]
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5174',
     'http://localhost:5173',
-    'http://127.0.0.1:8000',
 ]
+
+from corsheaders.defaults import default_headers
 
 CORS_ALLOW_HEADERS = default_headers + (
     'cache-control',
     'content-disposition',
     'Access-Control-Expose-Headers',
 )
+
+CORS_ALLOW_ALL_METHODS = True
+CORS_ALLOW_ALL_HEADERS = True
 
 TEMPLATES = [
     {
@@ -118,20 +118,50 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'kaxoot.wsgi.application'
+ASGI_APPLICATION = "project_name.asgi.application"
 
-# ✅ Lokal uchun SQLite ishlatamiz
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / "db.sqlite3",
-    }
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
 }
 
-AUTH_PASSWORD_VALIDATORS = []
+DATABASES = {
+    'default': dj_database_url.parse(
+        config('DATABASE_URL', default='sqlite:///db.sqlite3')
+    )
+}
+CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    'https://game.kvark.uz',
+    "https://2437fd5802b5.ngrok-free.app"
+]
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
 
 LANGUAGE_CODE = 'en-us'
+
 TIME_ZONE = 'UTC'
+
 USE_I18N = True
+
 USE_TZ = True
 
 STATIC_URL = 'static/'
