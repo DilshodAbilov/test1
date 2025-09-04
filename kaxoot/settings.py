@@ -118,7 +118,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'kaxoot.wsgi.application'
-ASGI_APPLICATION = "project_name.asgi.application"
+ASGI_APPLICATION = "kaxoot.asgi.application"
 
 CHANNEL_LAYERS = {
     "default": {
