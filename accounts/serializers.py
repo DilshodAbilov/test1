@@ -1,15 +1,12 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
+from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from firebase_admin import auth as firebase_auth
 
 User = get_user_model()
 
-
-# -------------------
-# Admin Register
-# -------------------
 class AdminRegisterSerializer(serializers.ModelSerializer):
     access = serializers.CharField(read_only=True)
     refresh = serializers.CharField(read_only=True)
@@ -37,10 +34,6 @@ class AdminRegisterSerializer(serializers.ModelSerializer):
             "refresh": str(refresh),
         }
 
-
-# -------------------
-# Admin Login
-# -------------------
 class AdminLoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
@@ -64,13 +57,8 @@ class AdminLoginSerializer(serializers.Serializer):
             "refresh": str(refresh),
         }
 
-
-# -------------------
-# Google Auth (User & Admin)
-# -------------------
 class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField(write_only=True)
-    is_admin = serializers.BooleanField(default=False, write_only=True)
     access = serializers.CharField(read_only=True)
     refresh = serializers.CharField(read_only=True)
     username = serializers.CharField(read_only=True)
@@ -80,7 +68,6 @@ class GoogleAuthSerializer(serializers.Serializer):
 
     def validate(self, data):
         token = data.get("id_token")
-        is_admin = data.get("is_admin", False)
 
         try:
             idinfo = id_token.verify_oauth2_token(token, requests.Request())
@@ -88,19 +75,16 @@ class GoogleAuthSerializer(serializers.Serializer):
             email = idinfo.get("email")
             first_name = idinfo.get("given_name", "")
             last_name = idinfo.get("family_name", "")
-            username = email.split("@")[0]
+            username = email.split("@")[0] if email else None
 
             user, created = User.objects.get_or_create(
                 username=username,
                 defaults={"first_name": first_name, "last_name": last_name, "email": email},
             )
 
-            if is_admin:
-                user.is_admin = True
-            else:
-                user.is_user = True
-
-            user.is_staff = False   # API orqali staff qo‘yilmaydi
+            user.is_admin = True
+            user.is_user = False
+            user.is_staff = False
             user.save()
 
             refresh = RefreshToken.for_user(user)
@@ -117,3 +101,51 @@ class GoogleAuthSerializer(serializers.Serializer):
 
         except ValueError:
             raise serializers.ValidationError("Google token noto‘g‘ri yoki eskirgan")
+
+class FirebaseAuthSerializer(serializers.Serializer):
+    firebase_token = serializers.CharField(write_only=True)
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    first_name = serializers.CharField(read_only=True)
+    last_name = serializers.CharField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+
+    def validate(self, data):
+        token = data.get("firebase_token")
+
+        try:
+            decoded_token = firebase_auth.verify_id_token(token)
+            email = decoded_token.get("email")
+            uid = decoded_token.get("uid")
+            name = decoded_token.get("name", "")
+            first_name = name.split(" ")[0] if name else ""
+            last_name = " ".join(name.split(" ")[1:]) if len(name.split(" ")) > 1 else ""
+
+            username = email.split("@")[0] if email else uid
+
+            user, _ = User.objects.get_or_create(
+                username=username,
+                defaults={"first_name": first_name, "last_name": last_name, "email": email},
+            )
+
+            user.is_user = True
+            user.is_admin = False
+            user.is_staff = False
+            user.save()
+
+            refresh = RefreshToken.for_user(user)
+            return {
+                "id": user.id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "is_admin": user.is_admin,
+                "is_user": user.is_user,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            }
+
+        except Exception as e:
+            raise serializers.ValidationError(f"Firebase token noto‘g‘ri: {str(e)}")

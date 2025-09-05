@@ -2,8 +2,14 @@ import os
 from pathlib import Path
 import dj_database_url
 from decouple import config
-
+import firebase_admin
+from firebase_admin import credentials
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+FIREBASE_CREDENTIALS = os.path.join(BASE_DIR, "gamekvark1.json")
+# FireBase
+cred = credentials.Certificate(FIREBASE_CREDENTIALS)
+firebase_admin.initialize_app(cred)
 
 SECRET_KEY = 'django-insecure-)4x1d-2q-e*yif6&#r5@iaw*w@9h%*(0b2^u=$!4z#$3h#x9(w'
 
@@ -118,7 +124,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'kaxoot.wsgi.application'
-ASGI_APPLICATION = "kaxoot.asgi.application"
+ASGI_APPLICATION = "kaxoot .asgi.application"
 
 CHANNEL_LAYERS = {
     "default": {
