@@ -7,15 +7,16 @@ from drf_spectacular.utils import extend_schema
 from .serializer import *
 from tests.models import *
 from .permission import *
-
+from rest_framework.pagination import PageNumberPagination
 class GroupAdd(APIView):
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         groups = Group.objects.all()
-        serializer = GroupSerializer(groups, many=True)
-        return Response(serializer.data)
+        page = PageNumberPagination()
+        pagination = page.paginate_queryset(groups, request, view=self)
+        serializer = GroupSerializer(pagination, many=True, context={'request': request})
+        return page.get_paginated_response(serializer.data)
 
     def post(self, request):
         serializer = GroupSerializer(data=request.data, context={'request': request})
@@ -49,11 +50,12 @@ class GroupEditor(APIView):
 class AddQuestion(APIView):
     serializer_class = QuestionsSerializer
     permission_classes = [IsAuthenticated]
-
     def get(self, request, group_code):
         questions = Questions.objects.filter(group__code=group_code)
-        serializer = QuestionsSerializer(questions, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        page = PageNumberPagination()
+        pagination = page.paginate_queryset(questions, request, view=self)
+        serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
+        return page.get_paginated_response(serializer.data)
 
     def post(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
@@ -67,12 +69,12 @@ class AddQuestion(APIView):
 
 class AddExistingQuestions(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request, group_code):
         questions = Questions.objects.filter(created_by=request.user, group__code=group_code)
-        serializer = QuestionsSerializer(questions, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
+        page = PageNumberPagination()
+        pagination = page.paginate_queryset(questions, request, view=self)
+        serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
+        return page.get_paginated_response(serializer.data)
     def post(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
         if group.admin != request.user:
@@ -101,7 +103,7 @@ class AddExistingQuestions(APIView):
 
 class EditQuestion(APIView):
     serializer_class = QuestionsSerializer
-
+    permission_classes = [IsAuthenticated]
     def get(self, request, group_code, question_id):
         question = get_object_or_404(Questions, id=question_id, group__code=group_code)
         serializer = QuestionsSerializer(question)
@@ -135,14 +137,78 @@ class Result(APIView):
         serializer = ResultSerializer(results, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class DeleteUserAnswer(APIView):
+class Question(APIView):
     permission_classes = [IsAuthenticated]
+    def get(self, request):
+        question = Questions.objects.filter(created_by=request.user)
+        page = PageNumberPagination()
+        pagination = page.paginate_queryset(question, request, view=self)
+        serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
+        return page.get_paginated_response(serializer.data)
 
-    def delete(self, request, group_code):
-        group = get_object_or_404(Group, code=group_code)
-        if group.admin != request.user:
-            return Response({"detail": "Siz xona egasi emassiz"}, status=status.HTTP_403_FORBIDDEN)
-        answers = UserAnswers.objects.filter(question__group__code=group_code)
-        deleted_count = answers.count()
-        answers.delete()
-        return Response({"detail": f"{deleted_count} javob o‘chirildi"}, status=status.HTTP_200_OK)
+    def post(self, request):
+        if not request.user.is_admin:
+            return Response({"detail": "Faqat admin savol qo‘shishi mumkin."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = QuestionsSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class QuestionsEditor(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, question_id):
+        question = Questions.objects.get(id=question_id, created_by=request.user)
+        serializer = QuestionsSerializer(question)
+        return Response(serializer.data)
+    def put(self, request, question_id):
+        question = Questions.objects.get(id=question_id, created_by=request.user)
+        if not request.user == question.created_by:
+            return Response({"detail":"Savol egasi emassiz!"})
+
+        serializer = QuestionsSerializer(instance=question, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self, request, question_id):
+        question = Questions.objects.get(id=question_id, created_by=request.user)
+        if not request.user == question.created_by:
+            return Response({"detail":"Savol egasi emassiz!"})
+        question.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+class CategoryApi(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        categories = Category.objects.all()
+        serializer = CategorySerializer(categories, many=True)
+        return Response(serializer.data)
+    def post(self, request):
+        if not request.user.is_admin:
+            return Response({"detail":"Admin emassiz!"})
+        serializer = CategorySerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class CategoryList(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, category_id):
+        category = Category.objects.get(id=category_id)
+        serializer = CategorySerializer(category)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    def put(self, request, category_id):
+        if not request.user.is_admin:
+            return Response({"detail":"Admin emassiz!"})
+        category = Category.objects.get(id=category_id)
+        serializer = CategorySerializer(instance=category, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self, request, category_id):
+        category = get_object_or_404(Category, id=category_id)
+        if not request.user.is_admin:
+            return Response({"detail":"Admin emassiz!"})
+        category.delete()
+        return Response({"detail":"O'chirildi!!!"},status=status.HTTP_204_NO_CONTENT)
+

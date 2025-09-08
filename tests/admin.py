@@ -5,7 +5,6 @@ from .models import *
 admin.site.register(Questions)
 admin.site.register(Answer)
 admin.site.register(Group)
-admin.site.register(Level)
 admin.site.register(Result)
 admin.site.register(UserAnswers)
 

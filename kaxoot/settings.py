@@ -6,16 +6,15 @@ import firebase_admin
 from firebase_admin import credentials
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-FIREBASE_CREDENTIALS = os.path.join(BASE_DIR, "gamekvark1.json")
-# FireBase
+FIREBASE_CREDENTIALS = os.path.join(BASE_DIR, config("FIREBASE_CREDENTIALS"))
 cred = credentials.Certificate(FIREBASE_CREDENTIALS)
 firebase_admin.initialize_app(cred)
 
-SECRET_KEY = 'django-insecure-)4x1d-2q-e*yif6&#r5@iaw*w@9h%*(0b2^u=$!4z#$3h#x9(w'
+SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = False
+DEBUG = config('DEBUG', default=False)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [config('ALLOWED_HOSTS')]
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -44,6 +43,8 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
 }
 SPECTACULAR_SETTINGS = {
     'TITLE': 'DRF Kursi',
@@ -59,7 +60,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-SITE_ID = 1
+SITE_ID = config('SITE_ID')
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
 
@@ -88,14 +89,8 @@ MIDDLEWARE = [
 AUTH_USER_MODEL = 'accounts.CustomUser'
 ROOT_URLCONF = 'kaxoot.urls'
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://game.kvark.uz",
-]
-
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5174',
-    'http://localhost:5173',
-]
+CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="").split(",")
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="").split(",")
 
 from corsheaders.defaults import default_headers
 
@@ -130,7 +125,8 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+             "hosts": [(config("REDIS_HOST", default="127.0.0.1"),
+                       config("REDIS_PORT", default=6379))],
         },
     },
 }
@@ -140,12 +136,7 @@ DATABASES = {
         config('DATABASE_URL', default='sqlite:///db.sqlite3')
     )
 }
-CSRF_TRUSTED_ORIGINS = [
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    'https://game.kvark.uz',
-    "https://2437fd5802b5.ngrok-free.app"
-]
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
