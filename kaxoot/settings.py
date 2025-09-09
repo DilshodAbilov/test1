@@ -117,8 +117,8 @@ CORS_ALLOW_HEADERS = default_headers + (
     'Access-Control-Expose-Headers',
 )
 
-CORS_ALLOW_ALL_METHODS = get_bool_from_env(config('CORS_ALLOW_ALL_METHODS'), False)
-CORS_ALLOW_ALL_HEADERS = get_bool_from_env(config('CORS_ALLOW_ALL_HEADERS'), False)
+CORS_ALLOW_ALL_METHODS = get_bool_from_env('CORS_ALLOW_ALL_METHODS', False)
+CORS_ALLOW_ALL_HEADERS = get_bool_from_env('CORS_ALLOW_ALL_HEADERS', False)
 
 TEMPLATES = [
     {
