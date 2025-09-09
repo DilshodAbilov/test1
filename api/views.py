@@ -11,6 +11,8 @@ from rest_framework.pagination import PageNumberPagination
 class GroupAdd(APIView):
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=GroupSerializer(many=True))
     def get(self, request):
         groups = Group.objects.all()
         page = PageNumberPagination()
@@ -18,6 +20,7 @@ class GroupAdd(APIView):
         serializer = GroupSerializer(pagination, many=True, context={'request': request})
         return page.get_paginated_response(serializer.data)
 
+    @extend_schema(request=GroupSerializer, responses=GroupSerializer)
     def post(self, request):
         serializer = GroupSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
@@ -29,11 +32,12 @@ class GroupEditor(APIView):
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated, IsRoomOwner]
 
+    @extend_schema(responses=GroupSerializer)
     def get(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
         serializer = GroupSerializer(group)
         return Response(serializer.data)
-
+    @extend_schema(request=GroupSerializer, responses=GroupSerializer)
     def put(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
         serializer = GroupSerializer(instance=group, data=request.data, context={'request': request})
@@ -42,6 +46,7 @@ class GroupEditor(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(responses={204: None})
     def delete(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
         group.delete()
@@ -50,6 +55,8 @@ class GroupEditor(APIView):
 class AddQuestion(APIView):
     serializer_class = QuestionsSerializer
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=QuestionsSerializer(many=True))
     def get(self, request, group_code):
         questions = Questions.objects.filter(group__code=group_code)
         page = PageNumberPagination()
@@ -57,6 +64,7 @@ class AddQuestion(APIView):
         serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
         return page.get_paginated_response(serializer.data)
 
+    @extend_schema(request=QuestionsSerializer, responses=QuestionsSerializer)
     def post(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
         if group.admin != request.user:
@@ -69,12 +77,16 @@ class AddQuestion(APIView):
 
 class AddExistingQuestions(APIView):
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=QuestionsSerializer(many=True))
     def get(self, request, group_code):
         questions = Questions.objects.filter(created_by=request.user, group__code=group_code)
         page = PageNumberPagination()
         pagination = page.paginate_queryset(questions, request, view=self)
         serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
         return page.get_paginated_response(serializer.data)
+
+    @extend_schema(request=QuestionsSerializer, responses=QuestionsSerializer)
     def post(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
         if group.admin != request.user:
@@ -87,6 +99,7 @@ class AddExistingQuestions(APIView):
             q.group.add(group)
         return Response({"detail": f"{questions.count()} test qo‘shildi"}, status=status.HTTP_200_OK)
 
+    @extend_schema(responses={204: None})
     def delete(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
         if group.admin != request.user:
@@ -104,11 +117,14 @@ class AddExistingQuestions(APIView):
 class EditQuestion(APIView):
     serializer_class = QuestionsSerializer
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=QuestionsSerializer)
     def get(self, request, group_code, question_id):
         question = get_object_or_404(Questions, id=question_id, group__code=group_code)
         serializer = QuestionsSerializer(question)
         return Response(serializer.data)
 
+    @extend_schema(request=QuestionsSerializer, responses=QuestionsSerializer)
     def put(self, request, group_code, question_id):
         group = get_object_or_404(Group, code=group_code)
         if group.admin != request.user:
@@ -120,6 +136,7 @@ class EditQuestion(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(responses={204: None})
     def delete(self, request, group_code, question_id):
         group = get_object_or_404(Group, code=group_code)
         if group.admin != request.user:
@@ -139,6 +156,8 @@ class Result(APIView):
 
 class Question(APIView):
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=QuestionsSerializer(many=True))
     def get(self, request):
         question = Questions.objects.filter(created_by=request.user)
         page = PageNumberPagination()
@@ -146,6 +165,7 @@ class Question(APIView):
         serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
         return page.get_paginated_response(serializer.data)
 
+    @extend_schema(request=QuestionsSerializer, responses=QuestionsSerializer)
     def post(self, request):
         if not request.user.is_admin:
             return Response({"detail": "Faqat admin savol qo‘shishi mumkin."}, status=status.HTTP_403_FORBIDDEN)
@@ -156,10 +176,14 @@ class Question(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class QuestionsEditor(APIView):
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=QuestionsSerializer)
     def get(self, request, question_id):
         question = Questions.objects.get(id=question_id, created_by=request.user)
         serializer = QuestionsSerializer(question)
         return Response(serializer.data)
+
+    @extend_schema(request=QuestionsSerializer, responses=QuestionsSerializer)
     def put(self, request, question_id):
         question = Questions.objects.get(id=question_id, created_by=request.user)
         if not request.user == question.created_by:
@@ -170,6 +194,8 @@ class QuestionsEditor(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(responses={204: None})
     def delete(self, request, question_id):
         question = Questions.objects.get(id=question_id, created_by=request.user)
         if not request.user == question.created_by:
@@ -178,10 +204,14 @@ class QuestionsEditor(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 class CategoryApi(APIView):
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=CategorySerializer(many=True))
     def get(self, request):
         categories = Category.objects.all()
         serializer = CategorySerializer(categories, many=True)
         return Response(serializer.data)
+
+    @extend_schema(request=CategorySerializer, responses=CategorySerializer)
     def post(self, request):
         if not request.user.is_admin:
             return Response({"detail":"Admin emassiz!"})
@@ -192,10 +222,14 @@ class CategoryApi(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class CategoryList(APIView):
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=CategorySerializer)
     def get(self, request, category_id):
         category = Category.objects.get(id=category_id)
         serializer = CategorySerializer(category)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(request=CategorySerializer, responses=CategorySerializer)
     def put(self, request, category_id):
         if not request.user.is_admin:
             return Response({"detail":"Admin emassiz!"})
@@ -205,6 +239,8 @@ class CategoryList(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(responses={204: None})
     def delete(self, request, category_id):
         category = get_object_or_404(Category, id=category_id)
         if not request.user.is_admin:
