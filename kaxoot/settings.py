@@ -1,10 +1,27 @@
+import ast
 import os
 from pathlib import Path
 import dj_database_url
 from decouple import config
 import firebase_admin
 from firebase_admin import credentials
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def get_list(text):
+    return [item.strip() for item in text.split(",")]
+
+
+def get_bool_from_env(name, default_value):
+    if name in os.environ:
+        value = os.environ[name]
+        try:
+            return ast.literal_eval(value)
+        except ValueError as e:
+            raise ValueError("{} is an invalid value for {}".format(value, name)) from e
+    return default_value
+
 
 FIREBASE_CREDENTIALS = os.path.join(BASE_DIR, config("FIREBASE_CREDENTIALS"))
 cred = credentials.Certificate(FIREBASE_CREDENTIALS)
@@ -12,9 +29,9 @@ firebase_admin.initialize_app(cred)
 
 SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = config('DEBUG', default=False)
+DEBUG = config('DEBUG', cast=bool, default=False)
 
-ALLOWED_HOSTS = [config('ALLOWED_HOSTS')]
+ALLOWED_HOSTS = get_list(config('ALLOWED_HOSTS'))
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -89,8 +106,8 @@ MIDDLEWARE = [
 AUTH_USER_MODEL = 'accounts.CustomUser'
 ROOT_URLCONF = 'kaxoot.urls'
 
-CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="").split(",")
-CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="").split(",")
+CSRF_TRUSTED_ORIGINS = get_list(config("CSRF_TRUSTED_ORIGINS", default=""))
+CORS_ALLOWED_ORIGINS = get_list(config("CORS_ALLOWED_ORIGINS", default=""))
 
 from corsheaders.defaults import default_headers
 
@@ -100,8 +117,8 @@ CORS_ALLOW_HEADERS = default_headers + (
     'Access-Control-Expose-Headers',
 )
 
-CORS_ALLOW_ALL_METHODS = True
-CORS_ALLOW_ALL_HEADERS = True
+CORS_ALLOW_ALL_METHODS = get_bool_from_env(config('CORS_ALLOW_ALL_METHODS'), False)
+CORS_ALLOW_ALL_HEADERS = get_bool_from_env(config('CORS_ALLOW_ALL_HEADERS'), False)
 
 TEMPLATES = [
     {
@@ -125,7 +142,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-             "hosts": [(config("REDIS_HOST", default="127.0.0.1"),
+            "hosts": [(config("REDIS_HOST", default="127.0.0.1"),
                        config("REDIS_PORT", default=6379))],
         },
     },
@@ -136,7 +153,6 @@ DATABASES = {
         config('DATABASE_URL', default='sqlite:///db.sqlite3')
     )
 }
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
