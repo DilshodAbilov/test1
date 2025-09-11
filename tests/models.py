@@ -65,5 +65,6 @@ class UserAnswers(models.Model):
     is_correct = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     score = models.IntegerField()
+    group = models.ForeignKey('Group', on_delete=models.CASCADE)
     def __str__(self):
         return self.user.username
