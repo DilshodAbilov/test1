@@ -289,17 +289,32 @@ class TestConsumer(AsyncWebsocketConsumer):
             with transaction.atomic():
                 question = Questions.objects.get(id=question_id)
                 answer = Answer.objects.get(id=answer_id, question_id=question.id)
+
                 existing_answer = UserAnswers.objects.filter(user_id=user_id, question_id=question.id).first()
                 if existing_answer:
                     return {"detail": "Siz allaqachon javob bergansiz."}
 
-                start_time = self.current_question_start_time.get(user_id, timezone.now())
+                start_time = self.current_question_start_time.get(user_id)
+                if not start_time:
+
+                    start_time = timezone.now()
+
+
                 level_score_map = {'LOW': 5, 'MEDIUM': 10, 'HIGH': 15}
                 base_score = level_score_map.get(question.level, 5)
+
                 group_time = getattr(self.group_obj, "time", 10) or 10
+
                 time_taken = (timezone.now() - start_time).total_seconds()
-                score = 0 if time_taken > group_time else base_score * (1 - time_taken / group_time)
-                score = round(score, 2)
+
+                if answer.is_correct:
+                    if time_taken >= group_time:
+                        score = 0
+                    else:
+                        score = base_score * (1 - time_taken / group_time)
+                        score = round(score, 2)
+                else:
+                    score = 0
 
                 UserAnswers.objects.create(
                     user_id=user_id,
