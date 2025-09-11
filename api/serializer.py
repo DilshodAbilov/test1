@@ -5,14 +5,42 @@ class AnswersSerializer(serializers.ModelSerializer):
         model = Answer
         fields = ['id', 'answer', 'is_correct']
         read_only_fields = ['id']
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
 class QuestionsSerializer(serializers.ModelSerializer):
     answers = AnswersSerializer(many=True)
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), write_only=True
+    )
     created_by = serializers.ReadOnlyField(source='created_by.username')
+
     class Meta:
         model = Questions
         fields = '__all__'
-        read_only_fields = ('id', 'group', 'created_by')
+
+    def create(self, validated_data):
+        answers_data = validated_data.pop('answers', [])
+        category = validated_data.pop('category_id')  # write_only fielddan olamiz
+        request = self.context.get('request')
+        group = self.context.get('group')
+
+        question = Questions.objects.create(
+            created_by=request.user,
+            category=category,
+            **validated_data
+        )
+
+        for answer_data in answers_data:
+            Answer.objects.create(question=question, **answer_data)
+
+        if group:
+            question.group.add(group)
+
+        return question
+
     def validate(self, data):
         answers = data.get('answers', [])
         if len(answers) != 4:
@@ -21,50 +49,24 @@ class QuestionsSerializer(serializers.ModelSerializer):
         if true_count != 1:
             raise serializers.ValidationError({"answers": "Har bir savolda faqat bitta javob to'g'ri bo'lishi kerak."})
         return data
-    def create(self, validated_data):
-        answers_data = validated_data.pop('answers', [])
-        request = self.context.get('request')
-        group = self.context.get('group')
-        question = Questions.objects.create(created_by=request.user, **validated_data)
-        for answer_data in answers_data:
-            Answer.objects.create(question=question, **answer_data)
-        if group:
-            question.group.add(group)
-        return question
     def update(self, instance, validated_data):
         request = self.context.get('request')
         if instance.created_by != request.user:
             raise serializers.ValidationError("Faqat o‘zingiz yaratgan savolni tahrirlash mumkin.")
-
         answers_data = validated_data.pop('answers', [])
-
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-
         instance.answers.all().delete()
         for answer_data in answers_data:
             Answer.objects.create(question=instance, **answer_data)
-
         return instance
-
-
-class CategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = '__all__'
-
-
-
 class GroupSerializer(serializers.ModelSerializer):
     questions = QuestionsSerializer(many=True, read_only=True)
-
     class Meta:
         model = Group
         fields = '__all__'
         read_only_fields = ('id', 'admin', 'start_time', "end_time")
-
-
 class ResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = Result

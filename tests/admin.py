@@ -7,4 +7,4 @@ admin.site.register(Answer)
 admin.site.register(Group)
 admin.site.register(Result)
 admin.site.register(UserAnswers)
-
+admin.site.register(Category)
