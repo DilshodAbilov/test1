@@ -11,4 +11,5 @@ urlpatterns = [
     path('edit/<int:question_id>/', QuestionsEditor.as_view()),
     path('category/add/', CategoryApi.as_view()),
     path('category/<int:category_id>/', CategoryList.as_view()),
+    path('user_me/', UserMe.as_view()),
 ]

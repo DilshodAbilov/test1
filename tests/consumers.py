@@ -33,24 +33,20 @@ class TestConsumer(AsyncWebsocketConsumer):
             await self.close(code=4401)
             return
 
-        # Guruh obyektini olish va userni guruhga qo'shish
         self.group_obj, already_joined = await self._ensure_membership(self.room_code, self.app_user.id)
         self.role = "admin" if self.app_user.is_admin else "student"
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        # Foydalanuvchi qo‘shildi degan xabar
         await self.channel_layer.group_send(
             self.room_group_name,
             {"type": "system_message", "payload": {"message": f"{self.app_user.username} ({self.role}) qo'shildi"}}
         )
 
-        # Guruh ma'lumotlarini yuborish
         group_info = await self._get_group_info(self.group_obj.id)
         await self._send_json({"type": "group_info", "group": group_info})
 
-        # Agar guruh allaqachon start bo‘lgan bo‘lsa, xabar yuborish
         if self.group_obj.start_time:
             await self._send_json({
                 "type": "info",
@@ -111,7 +107,6 @@ class TestConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return await self._send_error(str(e))
 
-    # ================== TEST BOSHLASH ==================
     async def _start_test(self):
         group = await self._get_group_obj(self.group_obj.id)
         if group.start_time:
@@ -159,7 +154,6 @@ class TestConsumer(AsyncWebsocketConsumer):
 
         self.current_question_task = asyncio.create_task(wait_and_continue())
 
-    # ================== JAVOBNI QABUL QILISH ==================
     async def _handle_submit_answer(self, question_id: int, answer_id: int):
         group = await self._get_group_obj(self.group_obj.id)
         if not group.is_active:
@@ -195,7 +189,6 @@ class TestConsumer(AsyncWebsocketConsumer):
             }},
         )
 
-    # ================== TESTNI TUGATISH ==================
     async def _finish_test(self):
         await self._mark_group_finished(self.group_obj.id)
         group_results = await self._mark_group_finished_and_collect_results(self.group_obj.id)
@@ -207,7 +200,6 @@ class TestConsumer(AsyncWebsocketConsumer):
             self.current_question_task.cancel()
         self.current_question_start_time = None
 
-    # ================== HELPERS ==================
     async def system_message(self, event):
         await self._send_json({"type": "message", **event["payload"]})
 
@@ -221,7 +213,7 @@ class TestConsumer(AsyncWebsocketConsumer):
         await self._send_json({"type": "question", "question": event["payload"]["question"]})
 
     async def student_answer(self, event):
-        # Hamma foydalanuvchilarga yuboriladi
+
         await self._send_json({"type": "student_answer", **event["payload"]})
 
     async def final_results(self, event):
@@ -236,7 +228,6 @@ class TestConsumer(AsyncWebsocketConsumer):
     def _is_admin(self) -> bool:
         return bool(self.app_user and self.app_user.is_admin)
 
-    # ================== DATABASE HELPERS ==================
     @database_sync_to_async
     def _map_to_app_user(self, auth_user):
         if not auth_user or not getattr(auth_user, "is_authenticated", False):
@@ -260,7 +251,7 @@ class TestConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _mark_group_started(self, group_id: int):
-        Group.objects.filter(id=group_id).update(is_active=True, start_time=timezone.now())
+        Group.objects.filter(id=group_id).update(is_active=True, is_used=True, start_time=timezone.now())
 
     @database_sync_to_async
     def _mark_group_finished(self, group_id: int):

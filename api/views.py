@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 from .serializer import *
 from tests.models import *
+from accounts.models import *
 from .permission import *
 from rest_framework.pagination import PageNumberPagination
 class GroupAdd(APIView):
@@ -14,7 +15,7 @@ class GroupAdd(APIView):
 
     @extend_schema(responses=GroupSerializer(many=True))
     def get(self, request):
-        groups = Group.objects.all()
+        groups = Group.objects.filter(admin = request.user)
         page = PageNumberPagination()
         pagination = page.paginate_queryset(groups, request, view=self)
         serializer = GroupSerializer(pagination, many=True, context={'request': request})
@@ -38,9 +39,9 @@ class GroupEditor(APIView):
         serializer = GroupSerializer(group)
         return Response(serializer.data)
     @extend_schema(request=GroupSerializer, responses=GroupSerializer)
-    def put(self, request, group_code):
+    def patch(self, request, group_code):
         group = get_object_or_404(Group, code=group_code)
-        serializer = GroupSerializer(instance=group, data=request.data, context={'request': request})
+        serializer = GroupSerializer(instance=group, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save(admin=request.user)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -58,7 +59,7 @@ class AddQuestion(APIView):
 
     @extend_schema(responses=QuestionsSerializer(many=True))
     def get(self, request, group_code):
-        questions = Questions.objects.filter(group__code=group_code)
+        questions = Questions.objects.filter(group__code=group_code, created_by = request.user)
         page = PageNumberPagination()
         pagination = page.paginate_queryset(questions, request, view=self)
         serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
@@ -81,6 +82,12 @@ class AddExistingQuestions(APIView):
     @extend_schema(request=QuestionsSerializer(many=True))
     def get(self, request, group_code):
         questions = Questions.objects.filter(created_by=request.user, group__code=group_code)
+        if request.GET.get("category"):
+            questions = questions.filter(category_id=request.GET.get("category"))
+        if request.GET.get("level"):
+            questions = questions.filter(level=request.GET.get("level"))
+        if request.GET.get("question"):
+            questions = questions.filter(questions__icontains=request.GET.get("question"))
         page = PageNumberPagination()
         pagination = page.paginate_queryset(questions, request, view=self)
         serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
@@ -160,6 +167,12 @@ class Question(APIView):
     @extend_schema(responses=QuestionsSerializer(many=True))
     def get(self, request):
         question = Questions.objects.filter(created_by=request.user)
+        if request.GET.get("category"):
+            question = question.filter(category_id=request.GET.get("category"))
+        if request.GET.get("level"):
+            question = question.filter(level=request.GET.get("level"))
+        if request.GET.get("question"):
+            question = question.filter(questions__icontains=request.GET.get("question"))
         page = PageNumberPagination()
         pagination = page.paginate_queryset(question, request, view=self)
         serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
@@ -247,4 +260,9 @@ class CategoryList(APIView):
             return Response({"detail":"Admin emassiz!"})
         category.delete()
         return Response({"detail":"O'chirildi!!!"},status=status.HTTP_204_NO_CONTENT)
-
+class UserMe(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        serializer = CustomUserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)

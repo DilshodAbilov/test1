@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from tests.models import *
+from accounts.models import CustomUser
 class AnswersSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
@@ -66,8 +67,12 @@ class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
         fields = '__all__'
-        read_only_fields = ('id', 'admin', 'start_time', "end_time")
+        read_only_fields = ('id', 'admin', 'start_time', "end_time", "is_used")
 class ResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = Result
         fields = '__all__'
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields  = '__all__'
