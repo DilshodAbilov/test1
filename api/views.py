@@ -87,7 +87,7 @@ class AddExistingQuestions(APIView):
         if request.GET.get("level"):
             questions = questions.filter(level=request.GET.get("level"))
         if request.GET.get("question"):
-            questions = questions.filter(questions__icontains=request.GET.get("question"))
+            questions = questions.filter(question__icontains=request.GET.get("question "))
         page = PageNumberPagination()
         pagination = page.paginate_queryset(questions, request, view=self)
         serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
@@ -172,7 +172,7 @@ class Question(APIView):
         if request.GET.get("level"):
             question = question.filter(level=request.GET.get("level"))
         if request.GET.get("question"):
-            question = question.filter(questions__icontains=request.GET.get("question"))
+            question = question.filter(question__icontains=request.GET.get("question"))
         page = PageNumberPagination()
         pagination = page.paginate_queryset(question, request, view=self)
         serializer = QuestionsSerializer(pagination, many=True, context={'request': request})
