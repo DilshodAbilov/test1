@@ -15,6 +15,7 @@ class Group(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=False)
     is_used = models.BooleanField(default=False)
+    total_questions = models.PositiveIntegerField(default=0)
     def __str__(self):
         return self.name
 level = {

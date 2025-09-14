@@ -21,7 +21,9 @@ class TestConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.current_question_task = None
-        self.current_question_start_time = None  # yagona start time
+        self.current_question_start_time = None
+        self.current_question_number = 0
+        self.last_question_id = None
 
     async def connect(self):
         self.room_code = self.scope["url_route"]["kwargs"]["room_code"]
@@ -79,12 +81,7 @@ class TestConsumer(AsyncWebsocketConsumer):
             if action == "next_question":
                 if not self._is_admin():
                     return await self._send_error("Ruxsat yo‘q (faqat admin).")
-                question_id = data.get("question_id")
-                if not question_id:
-                    return await self._send_error("question_id kerak.")
-                if self.current_question_task:
-                    self.current_question_task.cancel()
-                await self._broadcast_question(question_id)
+                await self._broadcast_question()
                 return
 
             if action == "finish_test":
@@ -117,23 +114,50 @@ class TestConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             {"type": "test_started", "payload": {"message": "Test boshlandi!", "group_id": self.group_obj.id}},
         )
-        await self._broadcast_question(0)
+        await self._broadcast_question()
 
-    async def _broadcast_question(self, question_id: int):
-        if question_id == 0:
+    async def send_leaderboard_to_admin(self, event):
+        if self._is_admin():
+            await self.send(text_data=json.dumps({
+                "type": "leaderboard",
+                "leaderboard": event["payload"]["leaderboard"]
+            }))
+
+    async def _broadcast_question(self, question_id=None):
+
+        if self.current_question_number == 0:
+            # Test endi boshlandi
             q = await self._get_first_question(self.group_obj.id)
+            if not q:
+                await self._finish_test()
+                return
+            self.current_question_number = 1
         else:
-            q = await self._get_next_question(question_id, self.group_obj.id)
+            q = await self._get_next_question(self.last_question_id, self.group_obj.id)
+            if not q:
+                await self._finish_test()
+                return
+            self.current_question_number += 1
 
-        if not q:
-            await self._finish_test()
-            return
+        self.last_question_id = q["id"]
+
+        total_questions = await database_sync_to_async(
+            lambda: Questions.objects.filter(group=self.group_obj.id).count()
+        )()
 
         start_time_iso = timezone.now().isoformat()
 
         await self.channel_layer.group_send(
             self.room_group_name,
-            {"type": "send_question", "payload": {"question": q, "start_time": start_time_iso}},
+            {
+                "type": "send_question",
+                "payload": {
+                    "question": q,
+                    "start_time": start_time_iso,
+                    "current_question_number": self.current_question_number,
+                    "total_questions": total_questions
+                },
+            },
         )
 
         if self.current_question_task:
@@ -146,6 +170,7 @@ class TestConsumer(AsyncWebsocketConsumer):
             unanswered = await self._get_unanswered_users(q["id"], self.group_obj.id)
             for user in unanswered:
                 await self._save_zero_for_user(q["id"], user["id"])
+
             next_q = await self._get_next_question(q["id"], self.group_obj.id)
             if next_q:
                 await self._broadcast_question(next_q["id"])
@@ -169,33 +194,39 @@ class TestConsumer(AsyncWebsocketConsumer):
             return await self._send_json({"type": "error", "error": save_info.get("detail")})
 
         score, is_correct = save_info
-        await self._send_json({
-            "type": "answer_feedback",
-            "question_id": question_id,
-            "is_correct": is_correct,
-            "score": score,
-            "message": "To‘g‘ri ✅" if is_correct else "Xato ❌"
-        })
+        if not self._is_admin():
+            await self._send_json({
+                "type": "answer_feedback",
+                "question_id": question_id,
+                "is_correct": is_correct,
+                "score": score,
+                "message": "To‘g‘ri ✅" if is_correct else "Xato ❌"
+            })
 
         leaderboard = await self._get_leaderboard(self.group_obj.id)
         await self.channel_layer.group_send(
             self.room_group_name,
-            {"type": "student_answer", "payload": {
-                "user": self.app_user.username,
-                "question_id": question_id,
-                "score": score,
-                "is_correct": is_correct,
-                "leaderboard": leaderboard
-            }},
+            {
+                "type": "send_leaderboard_to_admin",
+                "payload": {"leaderboard": leaderboard}
+            }
         )
 
     async def _finish_test(self):
         await self._mark_group_finished(self.group_obj.id)
         group_results = await self._mark_group_finished_and_collect_results(self.group_obj.id)
+
+        leaderboard = await self._get_leaderboard(self.group_obj.id)
+
         await self.channel_layer.group_send(
             self.room_group_name,
-            {"type": "final_results", "results": group_results},
+            {
+                "type": "final_results",
+                "results": group_results,
+                "leaderboard": leaderboard
+            },
         )
+
         if self.current_question_task:
             self.current_question_task.cancel()
         self.current_question_start_time = None
@@ -210,8 +241,12 @@ class TestConsumer(AsyncWebsocketConsumer):
         start_time_iso = event["payload"].get("start_time")
         if start_time_iso:
             self.current_question_start_time = timezone.datetime.fromisoformat(start_time_iso)
-        await self._send_json({"type": "question", "question": event["payload"]["question"]})
-
+        await self._send_json({
+            "type": "question",
+            "question": event["payload"]["question"],
+            "current_question_number": event["payload"]["current_question_number"],
+            "total_questions": event["payload"]["total_questions"]
+        })
     async def student_answer(self, event):
 
         await self._send_json({"type": "student_answer", **event["payload"]})
@@ -283,6 +318,7 @@ class TestConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def _get_group_info(self, group_id: int):
         group = Group.objects.get(id=group_id)
+        total_questions = Questions.objects.filter(group=group_id).count()
         return {
             "id": group.id,
             "name": group.name,
@@ -291,7 +327,8 @@ class TestConsumer(AsyncWebsocketConsumer):
             "start_time": group.start_time.isoformat() if group.start_time else None,
             "end_time": group.end_time.isoformat() if group.end_time else None,
             "is_active": group.is_active,
-            "code": group.code
+            "code": group.code,
+            "total_questions": total_questions
         }
 
     @database_sync_to_async
