@@ -152,7 +152,7 @@ class EditQuestion(APIView):
         question.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class Result(APIView):
+class ResultApi(APIView):
     serializer_class = ResultSerializer
 
     @extend_schema(responses=ResultSerializer(many=True))

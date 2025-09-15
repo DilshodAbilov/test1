@@ -68,10 +68,10 @@ class GroupSerializer(serializers.ModelSerializer):
         model = Group
         fields = '__all__'
         read_only_fields = ('id', 'admin', 'start_time', "end_time", "is_used")
-class ResultSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Result
-        fields = '__all__'
+class ResultSerializer(serializers.Serializer):
+    score = serializers.FloatField()
+    rank = serializers.IntegerField()
+    group_name = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), source='group.name')
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
